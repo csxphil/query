@@ -1,4 +1,15 @@
-var printErrorInfo = require('@corpsmap/printErrorInfo');
+var printErrorInfo =  function(obj){
+  if(obj && Object.keys(obj).length > 0 ){
+      var keys = Object.keys(obj);
+      var retString = '';
+      keys.forEach(function(k,i){
+          retString += (retString === '' ? '':', ') + k + ': ' + obj[k];
+      });
+      return retString;
+  } else {
+      return 'No Params';
+  }
+};
 
 module.exports = {
   //name on right side of : gives it a name that can be called within the scope of itself
@@ -45,6 +56,7 @@ module.exports = {
       }
     );
   },
+
   runQuery: function(data,req,res,next) {
     var parentRes = res;
     var self = this;

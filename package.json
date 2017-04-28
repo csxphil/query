@@ -12,7 +12,5 @@
   },
   "author": "Charles Howe",
   "license": "ISC",
-  "dependencies": {
-    "@corpsmap/printerrorinfo": "^1.0.0"
-  }
+  "dependencies": {}
 }
