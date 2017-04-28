@@ -48,8 +48,9 @@ module.exports = {
   runQuery: function(data,req,res,next) {
     var parentRes = res;
     var self = this;
+    var isResultSet = (data.queryOpts && data.queryOpts.resultSet);
     // default run count of zero set higher for all sources with restricted access
-    if(data.resultSet && !data.rsRunCount){
+    if(isResultSet && !data.rsRunCount){
       data.rsRunCount = 0;
     }
     
@@ -91,7 +92,7 @@ module.exports = {
               return;
             } else if (result){
               try{
-                if (data.resultSet){
+                if (isResultSet){
                   var dataSet = {};
                   self.fetchRowsFromRS(connection, res, next, result.resultSet, data.queryOpts.prefetchRows, dataSet, data);
                 } else {
@@ -102,7 +103,7 @@ module.exports = {
                 console.error('Path: ' + req.route.path);
                 console.error('Params: ' + printErrorInfo.printParams(req.query));
                 console.error(e.message);
-                if (!data.resultSet){
+                if (!isResultSet){
                   connection.release(
                     function (err) {
                       if (err) {
@@ -116,7 +117,7 @@ module.exports = {
                 }
               } finally {
                 //only close synchronously if not a result set, as the result set will close its own connection
-                if (!data.resultSet){
+                if (!isResultSet){
                   connection.release(
                     function (err) {
                       if (err) {
