@@ -11,5 +11,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Charles Howe",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@corpsmap/printerrorinfo": "^1.0.0"
+  }
 }
