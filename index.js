@@ -71,7 +71,7 @@ module.exports = {
         if (err) {
           console.error('Error in establishing connection');
           console.error('Path: ' + req.route.path);
-          console.error('Params: ' + printErrorInfo.printParams(req.query));
+          console.error('Params: ' + printErrorInfo(req.query));
           console.error(err.message);
           if(connection){
             connection.release(
@@ -98,7 +98,7 @@ module.exports = {
             if (err) {
               console.error('Error in querying or fetching data');
               console.error('Path: ' + req.route.path);
-              console.error('Params: ' + printErrorInfo.printParams(req.query));
+              console.error('Params: ' + printErrorInfo(req.query));
               console.error(err.message);
               next(err); // Run the error through the next step in the express pipeline
               return;
@@ -113,7 +113,7 @@ module.exports = {
               } catch(e) {
                 console.error('Error in creating or outputting JSON');
                 console.error('Path: ' + req.route.path);
-                console.error('Params: ' + printErrorInfo.printParams(req.query));
+                console.error('Params: ' + printErrorInfo(req.query));
                 console.error(e.message);
                 if (!isResultSet){
                   connection.release(
