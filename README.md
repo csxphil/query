@@ -1,11 +1,11 @@
-## Query
+## simplequery
 ### A simple module to streamline using node-oracledb within the routes of an express server to return JSON data
 
 The module is capable of handling both regular queries with a limited maxRows and resultSets, with slight differences in the functions utilized.
 
 ##### Get Started
 Add to your route file or server js file:
-`var query = require('@corpsmap/query');`
+`var query = require('@corpsmap/simplequery');`
 
 ##### Regular versus ResultSet
 If you think your query will return less than 10,000 rows a regular query is the best fit, and will perform faster as the resultSet has to process the collection of results in chunks. If your query does return more than the allotted maxRows in your query, then it will simply stop at that row count and not return further rows.
