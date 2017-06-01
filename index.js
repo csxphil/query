@@ -15,6 +15,7 @@ module.exports = {
   //name on right side of : gives it a name that can be called within the scope of itself
   fetchRowsFromRS : function fetchRowsFromRS(connection, res, next, resultSet, numRows, dataSet, helper) {
     var parentRes = res;
+    var useLoader = (helper.queryOpts && helper.queryOpts.useLoader);
     //Close the resultset out after it has been looped through
     function doClose(connection, resultSet, next) {
       resultSet.close(
@@ -44,7 +45,12 @@ module.exports = {
           console.error(err);
           doClose(connection, resultSet); // always close the result set
         } else if (rows.length === 0 || (!helper.validReq && helper.rsRunCount > 0)) {    // no rows, or no more rows
-          parentRes.json(helper.postLoadFn(dataSet));
+          if(useLoader){
+            helper.postLoadFn(dataSet);
+          } else {
+            parentRes.json(helper.postLoadFn(dataSet));
+          }
+          
           doClose(connection, resultSet); // always close the result set
         } else if (rows.length > 0) {
           helper.rsRunCount += 1;
@@ -61,6 +67,7 @@ module.exports = {
     var parentRes = res;
     var self = this;
     var isResultSet = (data.queryOpts && data.queryOpts.resultSet);
+    var useLoader = (data.queryOpts && data.queryOpts.useLoader);
     // default run count of zero set higher for all sources with restricted access
     if(isResultSet && !data.rsRunCount){
       data.rsRunCount = 0;
@@ -108,7 +115,13 @@ module.exports = {
                   var dataSet = {};
                   self.fetchRowsFromRS(connection, res, next, result.resultSet, data.queryOpts.prefetchRows, dataSet, data);
                 } else {
-                  parentRes.json(data.loadFn(result));
+                  if (useLoader){
+                    //assume that the socket is within the loadFn
+                    data.loadFn(result);
+                    parentRes.send();
+                  } else {
+                    parentRes.json(data.loadFn(result));
+                  }
                 }
               } catch(e) {
                 console.error('Error in creating or outputting JSON');
