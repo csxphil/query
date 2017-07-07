@@ -22,17 +22,22 @@ module.exports = {
         function(err){
           if (err) { 
             console.error(err.message); 
-            next(err);
           }
 
-          connection.release(
-            function(err){
-              if (err) { 
-                console.error(err.message); 
-                next(err);
+          if(connection){
+            connection.release(
+              function(err){
+                if (err) { 
+                  console.error(err.message); 
+                  next(err);
+                } else {
+                  next();
+                }
               }
-            }
-          );
+            );
+          } else {
+            next();
+          }
         }
       );
     }
@@ -45,19 +50,25 @@ module.exports = {
           console.error(err);
           doClose(connection, resultSet); // always close the result set
         } else if (rows.length === 0 || (!helper.validReq && helper.rsRunCount > 0)) {    // no rows, or no more rows
-          if(useLoader){
-            helper.postLoadFn(dataSet);
-          } else {
-            parentRes.json(helper.postLoadFn(dataSet));
+          try {
+            if(useLoader){
+              helper.postLoadFn(dataSet);
+            } else {
+              parentRes.json(helper.postLoadFn(dataSet));
+            }
+          } finally {
+            doClose(connection, resultSet); // always close the result set
           }
           
-          doClose(connection, resultSet); // always close the result set
         } else if (rows.length > 0) {
           helper.rsRunCount += 1;
-
-          dataSet = helper.loadFn(dataSet,rows);
+          try{
+            dataSet = helper.loadFn(dataSet,rows);
        
-          fetchRowsFromRS(connection, res, next, resultSet, numRows, dataSet, helper);
+            fetchRowsFromRS(connection, res, next, resultSet, numRows, dataSet, helper);
+          } catch (e){
+            doClose(connection, resultSet);
+          }
         }
       }
     );
@@ -72,6 +83,14 @@ module.exports = {
     if(isResultSet && !data.rsRunCount){
       data.rsRunCount = 0;
     }
+
+    if(typeof data.params !== 'object'){
+      data.params = {};
+    }
+
+    if(typeof data.queryOpts !== 'object'){
+      data.queryOpts = {};
+    }
     
     req.pool.getConnection(
       function (err, connection) {
@@ -81,83 +100,64 @@ module.exports = {
           console.error('Params: ' + printErrorInfo(req.query));
           console.error(err.message);
           if(connection){
-            connection.release(
-              function (err) {
-                if (err) {
-                  console.error(err.message);
-                  return next(err);
-                } else {
-                    return next();    
-                }
-                    
-              }
-            );
+            connection.release(function() {
+                next(err);
+            });
           } else {
-            return next();
+            next(err);
           }
         }
 
-        connection.execute(
-          data.query
-          ,data.params
-          ,data.queryOpts
-          ,function (err, result) {
-            if (err) {
-              console.error('Error in querying or fetching data');
-              console.error('Path: ' + req.route.path);
-              console.error('Params: ' + printErrorInfo(req.query));
-              console.error(err.message);
-              next(err); // Run the error through the next step in the express pipeline
-              return;
-            } else if (result){
-              try{
+        if(typeof data.query === 'string'){
+          connection.execute(
+            data.query
+            ,data.params
+            ,data.queryOpts
+            ,function (err, result) {
+              if (err) {
+                console.error('Error in querying or fetching data');
+                console.error('Path: ' + req.route.path);
+                console.error('Params: ' + printErrorInfo(req.query));
+                console.error(err.message);
+                connection.release(
+                  function () {
+                      next(err);
+                  }
+                );
+              } else if (result){
                 if (isResultSet){
                   var dataSet = {};
                   self.fetchRowsFromRS(connection, res, next, result.resultSet, data.queryOpts.prefetchRows, dataSet, data);
                 } else {
-                  if (useLoader){
-                    //assume that the socket is within the loadFn
-                    data.loadFn(result);
-                    parentRes.send();
-                  } else {
-                    parentRes.json(data.loadFn(result));
-                  }
-                }
-              } catch(e) {
-                console.error('Error in creating or outputting JSON');
-                console.error('Path: ' + req.route.path);
-                console.error('Params: ' + printErrorInfo(req.query));
-                console.error(e.message);
-                if (!isResultSet){
                   connection.release(
                     function (err) {
                       if (err) {
                         console.error(err.message);
-                        return next(err);
+                        next(err);
                       } else { 
-                        return;
-                      }
-                    }
-                  );
-                }
-              } finally {
-                //only close synchronously if not a result set, as the result set will close its own connection
-                if (!isResultSet){
-                  connection.release(
-                    function (err) {
-                      if (err) {
-                        console.error(err.message);
-                        return next(err);
-                      } else { 
-                        return;
+                        if (useLoader){
+                          //assume that the socket is within the loadFn
+                          data.loadFn(result);
+                          parentRes.send();
+                        } else {
+                          parentRes.json(data.loadFn(result));
+                        }    
                       }
                     }
                   );
                 }
               }
             }
-          }
-        );
+          );
+        } else {
+          console.error('Query String not provided');
+          console.error('Path: ' + req.route.path);
+          connection.release(
+            function () {
+                next();
+            }
+          );
+        }
       }
     );
   }
